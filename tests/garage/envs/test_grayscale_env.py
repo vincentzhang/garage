@@ -16,7 +16,7 @@ class TestGrayscale(unittest.TestCase):
         self.env = mock.Mock()
         self.env.observation_space = Box(
             low=0, high=255, shape=self.shape, dtype=np.uint8)
-        self.env.reset.return_value = np.zeros(self.shape)
+        self.env.reset.return_value = np.full(self.shape, [10, 40, 80])
         self.env.step.side_effect = self._step
 
         self.env_g = Grayscale(self.env)
@@ -25,7 +25,7 @@ class TestGrayscale(unittest.TestCase):
         self.obs_g = self.env_g.reset()
 
     def _step(self, action):
-        return np.full(self.shape, 125), 0, False, dict()
+        return np.full(self.shape, [20, 50, 90]), 0, False, dict()
 
     def test_gray_scale_invalid_environment_type(self):
         with self.assertRaises(ValueError):
@@ -52,7 +52,7 @@ class TestGrayscale(unittest.TestCase):
         http://scikit-image.org/docs/dev/api/skimage.color.html#skimage.color.rgb2grey
         """
         gray_scale_output = np.dot(self.obs[:, :, :3],
-                                   [0.2125, 0.7154, 0.0721]) / 255.0
+                                   [0.2125, 0.7154, 0.0721]).astype(np.uint8)
         np.testing.assert_array_almost_equal(gray_scale_output, self.obs_g)
 
     def test_grayscale_step(self):
@@ -60,5 +60,5 @@ class TestGrayscale(unittest.TestCase):
         obs_g, _, _, _ = self.env_g.step(0)
 
         gray_scale_output = np.dot(obs[:, :, :3],
-                                   [0.2125, 0.7154, 0.0721]) / 255.0
+                                   [0.2125, 0.7154, 0.0721]).astype(np.uint8)
         np.testing.assert_array_almost_equal(gray_scale_output, obs_g)

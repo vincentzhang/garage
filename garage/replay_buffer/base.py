@@ -18,7 +18,11 @@ import numpy as np
 class ReplayBuffer(metaclass=abc.ABCMeta):
     """Abstract class for Replay Buffer."""
 
-    def __init__(self, env_spec, size_in_transitions, time_horizon):
+    def __init__(self,
+                 env_spec,
+                 size_in_transitions,
+                 time_horizon,
+                 dtype=np.float32):
         """
         Initialize the data used in ReplayBuffer.
 
@@ -33,13 +37,13 @@ class ReplayBuffer(metaclass=abc.ABCMeta):
         self._initialized_buffer = False
         self._buffer = {}
         self._episode_buffer = {}
+        self._dtype = dtype
 
     def store_episode(self):
         """Add an episode to the buffer."""
         episode_buffer = self._convert_episode_to_batch_major()
         rollout_batch_size = len(episode_buffer["observation"])
         idx = self._get_storage_idx(rollout_batch_size)
-
         for key in self._buffer.keys():
             self._buffer[key][idx] = episode_buffer[key]
         self._n_transitions_stored += self._time_horizon * rollout_batch_size
@@ -66,7 +70,8 @@ class ReplayBuffer(metaclass=abc.ABCMeta):
         for key, value in kwargs.items():
             self._episode_buffer[key] = list()
             self._buffer[key] = np.zeros(
-                [self._size, self._time_horizon, *np.array(value).shape[1:]])
+                [self._size, self._time_horizon, *np.array(value).shape[1:]],
+                dtype=self._dtype)
         self._initialized_buffer = True
 
     def _get_storage_idx(self, size_increment=1):

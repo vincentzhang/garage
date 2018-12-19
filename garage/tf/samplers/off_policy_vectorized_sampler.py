@@ -91,6 +91,7 @@ class OffPolicyVectorizedSampler(BatchSampler):
                     input_obses)
 
             next_obses, rewards, dones, env_infos = self.vec_env.step(actions)
+
             agent_infos = tensor_utils.split_tensor_dict_list(agent_infos)
             env_infos = tensor_utils.split_tensor_dict_list(env_infos)
             if agent_infos is None:
@@ -131,7 +132,7 @@ class OffPolicyVectorizedSampler(BatchSampler):
                 running_paths[idx]["rewards"].append(reward)
                 running_paths[idx]["env_infos"].append(env_info)
 
-                if done or (rollout == self.algo.max_path_length - 1):
+                if done:
                     paths.append(
                         dict(
                             rewards=tensor_utils.stack_tensor_list(
