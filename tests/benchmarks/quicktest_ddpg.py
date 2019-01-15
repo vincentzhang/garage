@@ -45,7 +45,7 @@ params = {
     "qf_lr": 1e-3,
     "policy_hidden_sizes": [64, 64],
     "qf_hidden_sizes": [64, 64],
-    "n_epochs": 50,
+    "n_epochs": 100,
     "n_epoch_cycles": 2,
     "n_rollout_steps": 10,
     "n_train_steps": 5,
