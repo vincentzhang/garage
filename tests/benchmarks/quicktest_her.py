@@ -1,38 +1,24 @@
-"""
-This script creates a regression test over garage-DDPG and baselines-DDPG.
-
-It get Mujoco1M benchmarks from baselines benchmark, and test each task in
-its trail times on garage model and baselines model. For each task, there will
-be `trail` times with different random seeds. For each trail, there will be two
-log directories corresponding to baselines and garage. And there will be a plot
-plotting the average return curve from baselines and garage.
-"""
+"""This script creates a regression test over garage-HER and baselines-HER."""
 import datetime
 import os.path as osp
-import os
 import random
-import shutil
 import unittest
+import shutil
 import json
+import os
 
-from baselines import logger as baselines_logger
 from baselines.bench import benchmarks
-from baselines.common.misc_util import set_global_seeds
-from baselines.ddpg.memory import Memory
-from baselines.ddpg.models import Actor, Critic
-from baselines.ddpg.noise import OrnsteinUhlenbeckActionNoise
-import baselines.ddpg.training as training
-from baselines.logger import configure
+from baselines.her.experiment.config import CACHED_ENVS
+from baselines.her.experiment.config import DEFAULT_PARAMS as BASELINES_PARAMS
+from baselines.her.experiment.train import launch
 import gym
 import matplotlib.pyplot as plt
-from mpi4py import MPI
-import numpy as np
 import pandas as pd
 import tensorflow as tf
 
 from garage.misc import ext
 from garage.misc import logger as garage_logger
-from garage.replay_buffer import SimpleReplayBuffer
+from garage.replay_buffer import HerReplayBuffer
 from garage.tf.algos import DDPG
 from garage.tf.envs import TfEnv
 from garage.tf.exploration_strategies import OUStrategy
@@ -41,35 +27,35 @@ from garage.tf.q_functions import ContinuousMLPQFunction
 
 # Hyperparams for baselines and garage
 params = {
-    "policy_lr": 1e-4,
+    "policy_lr": 1e-3,
     "qf_lr": 1e-3,
-    "policy_hidden_sizes": [64, 64],
-    "qf_hidden_sizes": [64, 64],
-    "n_epochs": 100,
-    "n_epoch_cycles": 2,
-    "n_rollout_steps": 10,
-    "n_train_steps": 5,
+    "policy_hidden_sizes": [256, 256, 256],
+    "qf_hidden_sizes": [256, 256, 256],
+    "n_epochs": 30,
+    "n_epoch_cycles": 20,
+    "n_rollout_steps": 100,
+    "n_train_steps": 40,
     "discount": 0.9,
-    "tau": 1e-2,
+    "tau": 0.05,
     "replay_buffer_size": int(1e6),
     "sigma": 0.2,
 }
 
+BASELINES_PARAMS["rollout_batch_size"] = 1
 
-class TestJson(unittest.TestCase):
-    def test_json(self):
+
+class TestBenchmarkHER(unittest.TestCase):
+    def test_benchmark_her(self):
         """
         Compare benchmarks between garage and baselines.
-
         :return:
         """
-        # Load Mujoco1M tasks, you can check other benchmarks here
-        # https://github.com/openai/baselines/blob/master/baselines/bench/benchmarks.py
-        mujoco1m = benchmarks.get_benchmark("Mujoco1M")
+        mujoco1m = benchmarks.get_benchmark("HerDdpg")
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
-        benchmark_dir = "./benchmark_ddpg/%s/" % timestamp
+        benchmark_dir = "./data/local/benchmark_her/%s/" % timestamp
+
         latest_dir = "./latest_results"
-        latest_result = latest_dir + "/ddpg_progress.json"
+        latest_result = latest_dir + "/her_progress.json"
         result_json = {}
         result_json["time_start"] = timestamp
 
@@ -97,11 +83,12 @@ class TestJson(unittest.TestCase):
                 garage_dir = trail_dir + "/garage"
                 baselines_dir = trail_dir + "/baselines"
 
-                # Run garage algorithms
                 garage_csv = run_garage(env, seed, garage_dir)
 
-                # Run baselines algorithms
-                baselines_csv = run_baselines(env, seed, baselines_dir)
+                CACHED_ENVS.clear()
+                baselines_csv = run_baselines(env_id, seed, baselines_dir)
+
+                env.close()
 
                 garage_csvs.append(garage_csv)
                 baselines_csvs.append(baselines_csv)
@@ -110,9 +97,9 @@ class TestJson(unittest.TestCase):
                 b_csvs=baselines_csvs,
                 g_csvs=garage_csvs,
                 g_x="Epoch",
-                g_y="AverageReturn",
-                b_x="total/epochs",
-                b_y="rollout/return",
+                g_y="AverageSuccessRate",
+                b_x="epoch",
+                b_y="train/success_rate",
                 trails=task["trials"],
                 seeds=seeds,
                 plt_file=plt_file,
@@ -123,18 +110,14 @@ class TestJson(unittest.TestCase):
                 g_csvs=garage_csvs,
                 seeds=seeds,
                 trails=task["trials"])
-
         result_file.write(json.dumps(result_json))
-
-    test_json.huge = True
+    test_benchmark_her.huge = True
 
 
 def run_garage(env, seed, log_dir):
     """
     Create garage model and training.
-
-    Replace the ddpg with the algorithm you want to run.
-
+    Replace the ppo with the algorithm you want to run.
     :param env: Environment of the task.
     :param seed: Random seed for the trail.
     :param log_dir: Log dir path.
@@ -144,7 +127,7 @@ def run_garage(env, seed, log_dir):
 
     with tf.Graph().as_default():
         env = TfEnv(env)
-        # Set up params for ddpg
+
         action_noise = OUStrategy(env.spec, sigma=params["sigma"])
 
         policy = ContinuousMLPPolicy(
@@ -152,20 +135,27 @@ def run_garage(env, seed, log_dir):
             name="Policy",
             hidden_sizes=params["policy_hidden_sizes"],
             hidden_nonlinearity=tf.nn.relu,
-            output_nonlinearity=tf.nn.tanh)
+            output_nonlinearity=tf.nn.tanh,
+            input_include_goal=True,
+        )
 
         qf = ContinuousMLPQFunction(
             env_spec=env.spec,
             name="QFunction",
             hidden_sizes=params["qf_hidden_sizes"],
-            hidden_nonlinearity=tf.nn.relu)
+            hidden_nonlinearity=tf.nn.relu,
+            input_include_goal=True,
+        )
 
-        replay_buffer = SimpleReplayBuffer(
+        replay_buffer = HerReplayBuffer(
             env_spec=env.spec,
             size_in_transitions=params["replay_buffer_size"],
-            time_horizon=params["n_rollout_steps"])
+            time_horizon=params["n_rollout_steps"],
+            replay_k=0.4,
+            reward_fun=env.compute_reward,
+        )
 
-        ddpg = DDPG(
+        algo = DDPG(
             env,
             policy=policy,
             qf=qf,
@@ -179,83 +169,49 @@ def run_garage(env, seed, log_dir):
             max_path_length=params["n_rollout_steps"],
             n_train_steps=params["n_train_steps"],
             discount=params["discount"],
-            min_buffer_size=int(1e2),
             exploration_strategy=action_noise,
             policy_optimizer=tf.train.AdamOptimizer,
-            qf_optimizer=tf.train.AdamOptimizer)
+            qf_optimizer=tf.train.AdamOptimizer,
+            buffer_batch_size=256,
+            input_include_goal=True,
+        )
 
         # Set up logger since we are not using run_experiment
         tabular_log_file = osp.join(log_dir, "progress.csv")
-        tensorboard_log_dir = osp.join(log_dir, "progress")
         garage_logger.add_tabular_output(tabular_log_file)
-        garage_logger.set_tensorboard_dir(tensorboard_log_dir)
+        garage_logger.set_tensorboard_dir(log_dir)
 
-        ddpg.train()
+        algo.train()
 
         garage_logger.remove_tabular_output(tabular_log_file)
+
         return tabular_log_file
 
 
-def run_baselines(env, seed, log_dir):
+def run_baselines(env_id, seed, log_dir):
     """
     Create baselines model and training.
 
-    Replace the ddpg and its training with the algorithm you want to run.
+    Replace the ppo and its training with the algorithm you want to run.
 
     :param env: Environment of the task.
     :param seed: Random seed for the trail.
     :param log_dir: Log dir path.
     :return
     """
-    rank = MPI.COMM_WORLD.Get_rank()
-    seed = seed + 1000000 * rank
-    set_global_seeds(seed)
-    env.seed(seed)
-
-    # Set up logger for baselines
-    configure(dir=log_dir)
-    baselines_logger.info('rank {}: seed={}, logdir={}'.format(
-        rank, seed, baselines_logger.get_dir()))
-
-    # Set up params for baselines ddpg
-    nb_actions = env.action_space.shape[-1]
-    layer_norm = False
-
-    action_noise = OrnsteinUhlenbeckActionNoise(
-        mu=np.zeros(nb_actions),
-        sigma=float(params["sigma"]) * np.ones(nb_actions))
-    memory = Memory(
-        limit=params["replay_buffer_size"],
-        action_shape=env.action_space.shape,
-        observation_shape=env.observation_space.shape)
-    critic = Critic(layer_norm=layer_norm)
-    actor = Actor(nb_actions, layer_norm=layer_norm)
-
-    training.train(
-        env=env,
-        eval_env=None,
-        param_noise=None,
-        action_noise=action_noise,
-        actor=actor,
-        critic=critic,
-        memory=memory,
-        nb_epochs=params["n_epochs"],
-        nb_epoch_cycles=params["n_epoch_cycles"],
-        render_eval=False,
-        reward_scale=1.,
-        render=False,
-        normalize_returns=False,
-        normalize_observations=False,
-        critic_l2_reg=0,
-        actor_lr=params["policy_lr"],
-        critic_lr=params["qf_lr"],
-        popart=False,
-        gamma=params["discount"],
-        clip_norm=None,
-        nb_train_steps=params["n_train_steps"],
-        nb_rollout_steps=params["n_rollout_steps"],
-        nb_eval_steps=100,
-        batch_size=64)
+    with tf.Session() as sess:
+        launch_params = {
+            "env": env_id,
+            "logdir": log_dir,
+            "n_epochs": params["n_epochs"],
+            "num_cpu":
+            1,  # For FetchReachEnv, the performance is not relevant to num_cpu
+            "seed": seed,
+            "policy_save_interval": 0,
+            "replay_strategy": "future",
+            "clip_return": 1,
+        }
+        launch(**launch_params)
 
     return osp.join(log_dir, "progress.csv")
 
@@ -263,7 +219,6 @@ def run_baselines(env, seed, log_dir):
 def plot(b_csvs, g_csvs, g_x, g_y, b_x, b_y, trails, seeds, plt_file, env_id):
     """
     Plot benchmark from csv files of garage and baselines.
-
     :param b_csvs: A list contains all csv files in the task.
     :param g_csvs: A list contains all csv files in the task.
     :param g_x: X column names of garage csv.
@@ -293,13 +248,12 @@ def plot(b_csvs, g_csvs, g_x, g_y, b_x, b_y, trails, seeds, plt_file, env_id):
             label="baselines_trail%d_seed%d" % (trail + 1, seed))
 
     plt.legend()
-    plt.xlabel("Epoch")
+    plt.xlabel("Iteration")
     plt.ylabel("AverageReturn")
     plt.title(env_id)
 
     plt.savefig(plt_file)
     plt.close()
-
 
 def create_json(b_csvs, g_csvs, trails, seeds):
     result = {}
