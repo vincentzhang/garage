@@ -173,7 +173,7 @@ class ExperimentDatabase:
             if legend is not None:
                 legends.append(exp.flat_params[legend])
             elif exp_color_key is not None and \
-                 exp_color_key not in used_legends:
+                    exp_color_key not in used_legends:
                 used_legends.append(exp_color_key)
                 legend_list.append(plots[-1])
 

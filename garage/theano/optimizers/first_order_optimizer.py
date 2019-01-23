@@ -7,8 +7,8 @@ import pyprind
 import theano
 
 from garage.core import Serializable
+from garage.logger import logger
 from garage.misc import ext
-from garage.misc import logger
 from garage.optimizers import BatchDataset
 from garage.theano.misc import tensor_utils
 

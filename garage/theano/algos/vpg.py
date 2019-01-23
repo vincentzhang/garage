@@ -3,8 +3,8 @@ import theano.tensor as TT
 
 from garage.algos import BatchPolopt
 from garage.core import Serializable
+from garage.logger import logger, tabular
 from garage.misc import ext
-from garage.misc import logger
 from garage.misc.overrides import overrides
 from garage.theano.misc import tensor_utils
 from garage.theano.optimizers import FirstOrderOptimizer
@@ -124,13 +124,13 @@ class VPG(BatchPolopt, Serializable):
         loss_before = self.optimizer.loss(inputs)
         self.optimizer.optimize(inputs)
         loss_after = self.optimizer.loss(inputs)
-        logger.record_tabular("LossBefore", loss_before)
-        logger.record_tabular("LossAfter", loss_after)
+        tabular.record("LossBefore", loss_before)
+        tabular.record("LossAfter", loss_after)
 
         mean_kl, max_kl = self.opt_info['f_kl'](*(
             list(inputs) + dist_info_list))
-        logger.record_tabular('MeanKL', mean_kl)
-        logger.record_tabular('MaxKL', max_kl)
+        tabular.record('MeanKL', mean_kl)
+        tabular.record('MaxKL', max_kl)
 
     @overrides
     def get_itr_snapshot(self, itr, samples_data):

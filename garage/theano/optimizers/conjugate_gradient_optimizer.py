@@ -3,9 +3,8 @@ import theano
 import theano.tensor as TT
 
 from garage.core import Serializable
-from garage.misc import ext
-from garage.misc import krylov
-from garage.misc import logger
+from garage.logger import logger
+from garage.misc import ext, krylov
 from garage.misc.ext import sliced_fun
 from garage.theano.misc import tensor_utils
 
@@ -25,8 +24,8 @@ class PerlmutterHvp(Serializable):
 
         constraint_grads = theano.grad(
             f, wrt=params, disconnected_inputs='warn')
-        xs = tuple([tensor_utils.new_tensor_like("%s x" % p.name, p) \
-                    for p in params])
+        xs = tuple(
+            [tensor_utils.new_tensor_like("%s x" % p.name, p) for p in params])
 
         def hx_plain():
             hx_plain_splits = TT.grad(

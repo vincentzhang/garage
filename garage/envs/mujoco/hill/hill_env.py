@@ -9,7 +9,7 @@ import mako.template
 from garage.core import Serializable
 from garage.envs.mujoco import mujoco_env
 from garage.envs.mujoco.hill import terrain
-from garage.misc import logger
+from garage.logger import logger
 
 MODEL_DIR = mujoco_env.MODEL_DIR
 

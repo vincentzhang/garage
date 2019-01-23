@@ -5,10 +5,9 @@ import numpy as np
 import theano.tensor as TT
 
 from garage.core import Serializable
-from garage.misc import logger
+from garage.logger import tabular
 from garage.misc.overrides import overrides
 from garage.policies import StochasticPolicy
-from garage.spaces import Box
 from garage.theano.core import LasagnePowered
 from garage.theano.core.lasagne_layers import ParamLayer
 from garage.theano.core.network import MLP
@@ -163,7 +162,7 @@ class GaussianMLPPolicy(StochasticPolicy, LasagnePowered):
     def log_diagnostics(self, paths):
         log_stds = np.vstack(
             [path["agent_infos"]["log_std"] for path in paths])
-        logger.record_tabular('AveragePolicyStd', np.mean(np.exp(log_stds)))
+        tabular.record('AveragePolicyStd', np.mean(np.exp(log_stds)))
 
     @property
     def distribution(self):

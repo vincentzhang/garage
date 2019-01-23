@@ -3,8 +3,8 @@ import numpy as np
 from garage.core import Serializable
 from garage.envs import Step
 from garage.envs.mujoco import MujocoEnv
+from garage.logger import tabular
 from garage.misc import autoargs
-from garage.misc import logger
 from garage.misc.overrides import overrides
 
 
@@ -86,7 +86,7 @@ class SimpleHumanoidEnv(MujocoEnv, Serializable):
             path["observations"][-1][-3] - path["observations"][0][-3]
             for path in paths
         ]
-        logger.record_tabular('AverageForwardProgress', np.mean(progs))
-        logger.record_tabular('MaxForwardProgress', np.max(progs))
-        logger.record_tabular('MinForwardProgress', np.min(progs))
-        logger.record_tabular('StdForwardProgress', np.std(progs))
+        tabular.record('AverageForwardProgress', np.mean(progs))
+        tabular.record('MaxForwardProgress', np.max(progs))
+        tabular.record('MinForwardProgress', np.min(progs))
+        tabular.record('StdForwardProgress', np.std(progs))

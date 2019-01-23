@@ -6,8 +6,8 @@ the different stages in the experiment lifecycle.
 import theano
 import theano.tensor as TT
 
+from garage.logger import tabular
 from garage.misc import ext
-import garage.misc.logger as logger
 from garage.misc.overrides import overrides
 from garage.theano.misc import tensor_utils
 from garage.theano.optimizers import PenaltyLbfgsOptimizer
@@ -121,11 +121,11 @@ class InstrumentedNPO(InstrumentedBatchPolopt):
         self.optimizer.optimize(all_input_values)
         mean_kl = self.optimizer.constraint_val(all_input_values)
         loss_after = self.optimizer.loss(all_input_values)
-        logger.record_tabular('LossBefore', loss_before)
-        logger.record_tabular('LossAfter', loss_after)
-        logger.record_tabular('MeanKLBefore', mean_kl_before)
-        logger.record_tabular('MeanKL', mean_kl)
-        logger.record_tabular('dLoss', loss_before - loss_after)
+        tabular.record('LossBefore', loss_before)
+        tabular.record('LossAfter', loss_after)
+        tabular.record('MeanKLBefore', mean_kl_before)
+        tabular.record('MeanKL', mean_kl)
+        tabular.record('dLoss', loss_before - loss_after)
         return dict()
 
     @overrides

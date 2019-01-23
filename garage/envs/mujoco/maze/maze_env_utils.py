@@ -4,37 +4,37 @@ import os.path as osp
 import matplotlib.pyplot as plt
 import numpy as np
 
-from garage.misc import logger
+from garage.logger import snapshotter
+
+DET_TOLERANCE = 0.00000001
 
 
-def line_intersect(pt1, pt2, ptA, ptB):
+def line_intersect(pt_1, pt_2, pt_a, pt_b):
     """
     Taken from https://www.cs.hmc.edu/ACM/lectures/intersections.html
 
-    this returns the intersection of Line(pt1,pt2) and Line(ptA,ptB)
+    this returns the intersection of Line(pt_1,pt_2) and Line(pt_a,pt_b)
 
     returns a tuple: (xi, yi, valid, r, s), where
     (xi, yi) is the intersection
-    r is the scalar multiple such that (xi,yi) = pt1 + r*(pt2-pt1)
-    s is the scalar multiple such that (xi,yi) = pt1 + s*(ptB-ptA)
+    r is the scalar multiple such that (xi,yi) = pt_1 + r*(pt_2-pt_1)
+    s is the scalar multiple such that (xi,yi) = pt_1 + s*(pt_b-pt_a)
     valid == 0 if there are 0 or inf. intersections (invalid)
     valid == 1 if it has a unique intersection ON the segment
     """
 
-    DET_TOLERANCE = 0.00000001
-
-    # the first line is pt1 + r*(pt2-pt1)
+    # the first line is pt_1 + r*(pt_2-pt_1)
     # in component form:
-    x1, y1 = pt1
-    x2, y2 = pt2
+    x1, y1 = pt_1
+    x2, y2 = pt_2
     dx1 = x2 - x1
     dy1 = y2 - y1
 
-    # the second line is ptA + s*(ptB-ptA)
-    x, y = ptA
-    xB, yB = ptB
-    dx = xB - x
-    dy = yB - y
+    # the second line is pt_a + s*(pt_b-pt_a)
+    x, y = pt_a
+    x_b, y_b = pt_b
+    dx = x_b - x
+    dy = y_b - y
 
     # we need to find the (typically unique) values of r and s
     # that will satisfy
@@ -49,29 +49,30 @@ def line_intersect(pt1, pt2, ptA, ptB):
     # whose solution is
     #
     #    [ r ] = _1_  [  -dy   dx ] [ x-x1 ]
-    #    [ s ] = DET  [ -dy1  dx1 ] [ y-y1 ]
+    #    [ s ] = det  [ -dy1  dx1 ] [ y-y1 ]
     #
-    # where DET = (-dx1 * dy + dy1 * dx)
+    # where det = (-dx1 * dy + dy1 * dx)
     #
-    # if DET is too small, they're parallel
+    # if det is too small, they're parallel
     #
-    DET = (-dx1 * dy + dy1 * dx)
+    det = (-dx1 * dy + dy1 * dx)
 
-    if math.fabs(DET) < DET_TOLERANCE: return (0, 0, 0, 0, 0)
+    if math.fabs(det) < DET_TOLERANCE:
+        return 0, 0, 0, 0, 0
 
     # now, the determinant should be OK
-    DETinv = 1.0 / DET
+    detinv = 1.0 / det
 
     # find the scalar amount along the "self" segment
-    r = DETinv * (-dy * (x - x1) + dx * (y - y1))
+    r = detinv * (-dy * (x - x1) + dx * (y - y1))
 
     # find the scalar amount along the input line
-    s = DETinv * (-dy1 * (x - x1) + dx1 * (y - y1))
+    s = detinv * (-dy1 * (x - x1) + dx1 * (y - y1))
 
     # return the average of the two descriptions
     xi = (x1 + r * dx1 + x + s * dx) / 2.0
     yi = (y1 + r * dy1 + y + s * dy) / 2.0
-    return (xi, yi, 1, r, s)
+    return xi, yi, 1, r, s
 
 
 def ray_segment_intersect(ray, segment):
@@ -82,10 +83,10 @@ def ray_segment_intersect(ray, segment):
     """
     (x, y), theta = ray
     # (x1, y1), (x2, y2) = segment
-    pt1 = (x, y)
+    pt_1 = (x, y)
     len = 1
-    pt2 = (x + len * math.cos(theta), y + len * math.sin(theta))
-    xo, yo, valid, r, s = line_intersect(pt1, pt2, *segment)
+    pt_2 = (x + len * math.cos(theta), y + len * math.sin(theta))
+    xo, yo, valid, r, s = line_intersect(pt_1, pt_2, *segment)
     if valid and r >= 0 and 0 <= s <= 1:
         return (xo, yo)
     return None
@@ -112,27 +113,27 @@ def construct_maze(maze_id=0, length=1):
     elif maze_id == 1:
         # donuts maze: can reach the single goal by 2 equal paths
         c = length + 4
-        M = np.ones((c, c))
-        M[1:c - 1, (1, c - 2)] = 0
-        M[(1, c - 2), 1:c - 1] = 0
-        M = M.astype(int).tolist()
-        M[1][c // 2] = 'r'
-        M[c - 2][c // 2] = 'g'
-        structure = M
+        m = np.ones((c, c))
+        m[1:c - 1, (1, c - 2)] = 0
+        m[(1, c - 2), 1:c - 1] = 0
+        m = m.astype(int).tolist()
+        m[1][c // 2] = 'r'
+        m[c - 2][c // 2] = 'g'
+        structure = m
 
     elif maze_id == 2:
         # spiral maze: need to use all the keys (only makes sense for
         # length >=3)
         c = length + 4
-        M = np.ones((c, c))
-        M[1:c - 1, (1, c - 2)] = 0
-        M[(1, c - 2), 1:c - 1] = 0
-        M = M.astype(int).tolist()
-        M[1][c // 2] = 'r'
+        m = np.ones((c, c))
+        m[1:c - 1, (1, c - 2)] = 0
+        m[(1, c - 2), 1:c - 1] = 0
+        m = m.astype(int).tolist()
+        m[1][c // 2] = 'r'
         # now block one of the ways and put the goal on the other side
-        M[1][c // 2 - 1] = 1
-        M[1][c // 2 - 2] = 'g'
-        structure = M
+        m[1][c // 2 - 1] = 1
+        m[1][c // 2 - 2] = 'g'
+        structure = m
 
     elif maze_id == 3:  # corridor with goals at the 2 extremes
         structure = [
@@ -143,27 +144,27 @@ def construct_maze(maze_id=0, length=1):
 
     elif 4 <= maze_id <= 7:  # cross corridor, goal in
         c = 2 * length + 5
-        M = np.ones((c, c))
-        M = M - np.diag(np.ones(c))
-        M = M - np.diag(np.ones(c - 1), 1) - np.diag(np.ones(c - 1), -1)
+        m = np.ones((c, c))
+        m = m - np.diag(np.ones(c))
+        m = m - np.diag(np.ones(c - 1), 1) - np.diag(np.ones(c - 1), -1)
         i = np.arange(c)
         j = i[::-1]
-        M[i, j] = 0
-        M[i[:-1], j[1:]] = 0
-        M[i[1:], j[:-1]] = 0
-        M[np.array([0, c - 1]), :] = 1
-        M[:, np.array([0, c - 1])] = 1
-        M = M.astype(int).tolist()
-        M[c // 2][c // 2] = 'r'
+        m[i, j] = 0
+        m[i[:-1], j[1:]] = 0
+        m[i[1:], j[:-1]] = 0
+        m[np.array([0, c - 1]), :] = 1
+        m[:, np.array([0, c - 1])] = 1
+        m = m.astype(int).tolist()
+        m[c // 2][c // 2] = 'r'
         if maze_id == 4:
-            M[1][1] = 'g'
+            m[1][1] = 'g'
         if maze_id == 5:
-            M[1][c - 2] = 'g'
+            m[1][c - 2] = 'g'
         if maze_id == 6:
-            M[c - 2][1] = 'g'
+            m[c - 2][1] = 'g'
         if maze_id == 7:
-            M[c - 2][c - 2] = 'g'
-        structure = M
+            m[c - 2][c - 2] = 'g'
+        structure = m
 
     elif maze_id == 8:  # reflexion of benchmark maze
         structure = [
@@ -232,12 +233,6 @@ def plot_ray(self, reading, ray_idx, color='r'):
                                    1] = cell
 
     fig, ax = plt.subplots()
-    im = ax.pcolor(
-        -np.array(structure_plot),
-        cmap='gray',
-        edgecolor='black',
-        linestyle=':',
-        lw=1)
     x_labels = list(range(len(structure[0])))
     y_labels = list(range(len(structure)))
     ax.grid(True)  # elimiate this to avoid inner lines
@@ -252,8 +247,8 @@ def plot_ray(self, reading, ray_idx, color='r'):
     # compute origin cell i_o, j_o coordinates and center of it x_o, y_o
     # (with 0,0 in the top-right corner of struc)
     o_xy = np.array(
-        self._find_robot()
-    )  # this is self.init_torso_x, self.init_torso_y !!: center of the cell xy!
+        self._find_robot())  # this is self.init_torso_x, self.init_torso_y
+    # !!: center of the cell xy!
     o_ij = (o_xy / size_scaling).astype(
         int)  # this is the position in the grid (check if correct..)
 
@@ -324,12 +319,6 @@ def plot_state(self, name='sensors', state=None):
                                    1] = cell
 
     fig, ax = plt.subplots()
-    im = ax.pcolor(
-        -np.array(structure_plot),
-        cmap='gray',
-        edgecolor='black',
-        linestyle=':',
-        lw=1)
     x_labels = list(range(len(structure[0])))
     y_labels = list(range(len(structure)))
     ax.grid(True)  # elimiate this to avoid inner lines
@@ -358,7 +347,8 @@ def plot_state(self, name='sensors', state=None):
 
     for ray_idx in range(self._n_bins):
         if obs[ray_idx]:
-            length_wall = self._sensor_range - obs[ray_idx] * self._sensor_range
+            length_wall = (
+                self._sensor_range - obs[ray_idx] * self._sensor_range)
         else:
             length_wall = 1e-6
         ray_ori = ori - self._sensor_span * 0.5 + ray_idx / (
@@ -375,8 +365,8 @@ def plot_state(self, name='sensors', state=None):
                  [robot_xy_plot[1], end_xy_plot[1]], 'r')
 
         if obs[ray_idx + self._n_bins]:
-            length_goal = self._sensor_range - obs[ray_idx + self.
-                                                   _n_bins] * self._sensor_range
+            length_goal = self._sensor_range - \
+                obs[ray_idx + self._n_bins] * self._sensor_range
         else:
             length_goal = 1e-6
         ray_ori = ori - self._sensor_span * 0.5 + ray_idx / (
@@ -388,7 +378,7 @@ def plot_state(self, name='sensors', state=None):
         plt.plot([robot_xy_plot[0], end_xy_plot[0]],
                  [robot_xy_plot[1], end_xy_plot[1]], 'g')
 
-    log_dir = logger.get_snapshot_dir()
+    log_dir = snapshotter.snapshot_dir
     ax.set_title('sensors: ' + name)
 
     plt.savefig(osp.join(

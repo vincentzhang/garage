@@ -4,7 +4,7 @@ import theano
 import theano.tensor as TT
 
 from garage.core import Serializable
-from garage.misc import logger
+from garage.logger import logger
 from garage.misc.ext import LazyDict
 from garage.theano.misc.tensor_utils import compile_function
 from garage.theano.misc.tensor_utils import flatten_tensor_variables
@@ -138,7 +138,7 @@ class PenaltyLbfgsOptimizer(Serializable):
             # Either constraint satisfied, or we are at the last iteration
             # already and no alternative parameter atisfies the constraint
             if try_constraint_val < self._max_constraint_val or \
-                    (penalty_itr == self._max_penalty_itr - 1 and \
+                    (penalty_itr == self._max_penalty_itr - 1 and
                      opt_params is None):
                 opt_params = itr_opt_params
 

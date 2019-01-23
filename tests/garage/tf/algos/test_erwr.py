@@ -5,7 +5,7 @@ too low.
 from garage.baselines import LinearFeatureBaseline
 from garage.envs import normalize
 from garage.envs.box2d import CartpoleEnv
-import garage.misc.logger as logger
+from garage.logger import logger, TensorBoardOutput
 from garage.tf.algos import ERWR
 from garage.tf.envs import TfEnv
 from garage.tf.policies import GaussianMLPPolicy
@@ -15,7 +15,7 @@ from tests.fixtures import TfGraphTestCase
 class TestERWR(TfGraphTestCase):
     def test_erwr_cartpole(self):
         """Test ERWR with Cartpole environment."""
-        logger.reset()
+        logger.reset_output(TensorBoardOutput())
         env = TfEnv(normalize(CartpoleEnv()))
 
         policy = GaussianMLPPolicy(

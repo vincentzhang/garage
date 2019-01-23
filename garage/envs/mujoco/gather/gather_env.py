@@ -3,14 +3,10 @@ import os.path as osp
 import tempfile
 import xml.etree.ElementTree as ET
 
-import glfw  # noqa: I100
+import glfw
 import gym
-from mujoco_py import functions
-from mujoco_py import load_model_from_path
-from mujoco_py import MjRenderContext
-from mujoco_py import MjSim
-from mujoco_py import MjViewer
-# https://github.com/openai/mujoco-py/blob/6ac6ac203a875ef35b1505827264cadccbfd9f05/mujoco_py/builder.py#L61
+from mujoco_py import (functions, load_model_from_path, MjRenderContext, MjSim,
+                       MjViewer)
 from mujoco_py.builder import cymj
 from mujoco_py.generated.const import CAT_ALL
 import numpy as np
@@ -18,11 +14,10 @@ import numpy as np
 from garage.core import Serializable
 from garage.envs import Step
 from garage.envs.mujoco.gather.embedded_viewer import EmbeddedViewer
-from garage.envs.mujoco.mujoco_env import BIG
-from garage.envs.mujoco.mujoco_env import MODEL_DIR
+from garage.envs.mujoco.mujoco_env import BIG, MODEL_DIR
 from garage.envs.util import flat_dim
+from garage.logger import tabular
 from garage.misc import autoargs
-from garage.misc import logger
 from garage.misc.overrides import overrides
 
 APPLE = 0
@@ -448,11 +443,11 @@ class GatherEnv(gym.Wrapper, Serializable):
         # we call here any logging related to the gather, strip the maze obs
         # and call log_diag with the stripped paths we need to log the purely
         # gather reward!!
-        with logger.tabular_prefix(log_prefix + '_'):
+        with tabular.prefix(log_prefix + '_'):
             gather_undiscounted_returns = [
                 sum(path['env_infos']['outer_rew']) for path in paths
             ]
-            logger.record_tabular_misc_stat(
+            tabular.record_misc_stat(
                 'Return', gather_undiscounted_returns, placement='front')
         stripped_paths = []
         for path in paths:
@@ -465,13 +460,12 @@ class GatherEnv(gym.Wrapper, Serializable):
             #  this breaks if the obs of the robot are d>1 dimensional (not a
             #  vector)
             stripped_paths.append(stripped_path)
-        with logger.tabular_prefix('wrapped_'):
+        with tabular.prefix('wrapped_'):
             if 'env_infos' in paths[0].keys(
             ) and 'inner_rew' in paths[0]['env_infos'].keys():
                 wrapped_undiscounted_return = np.mean(
                     [np.sum(path['env_infos']['inner_rew']) for path in paths])
-                logger.record_tabular('AverageReturn',
-                                      wrapped_undiscounted_return)
+                tabular.record('AverageReturn', wrapped_undiscounted_return)
             self.env.log_diagnostics(
                 stripped_paths
             )  # see swimmer_env.py for a scketch of the maze plotting!

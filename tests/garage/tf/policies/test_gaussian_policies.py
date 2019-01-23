@@ -4,17 +4,17 @@ garage.tf.policies.
 """
 from nose2 import tools
 
+from garage import config
 from garage.baselines import LinearFeatureBaseline
 from garage.envs import normalize
 from garage.envs.box2d import CartpoleEnv
-import garage.misc.logger as logger
+from garage.logger import logger, TensorBoardOutput
 from garage.tf.algos import TRPO
 from garage.tf.envs import TfEnv
-from garage.tf.optimizers import ConjugateGradientOptimizer
-from garage.tf.optimizers import FiniteDifferenceHvp
-from garage.tf.policies import GaussianGRUPolicy
-from garage.tf.policies import GaussianLSTMPolicy
-from garage.tf.policies import GaussianMLPPolicy
+from garage.tf.optimizers import (ConjugateGradientOptimizer,
+                                  FiniteDifferenceHvp)
+from garage.tf.policies import (GaussianGRUPolicy, GaussianLSTMPolicy,
+                                GaussianMLPPolicy)
 from tests.fixtures import TfGraphTestCase
 
 policies = [GaussianGRUPolicy, GaussianLSTMPolicy, GaussianMLPPolicy]
@@ -23,7 +23,7 @@ policies = [GaussianGRUPolicy, GaussianLSTMPolicy, GaussianMLPPolicy]
 class TestGaussianPolicies(TfGraphTestCase):
     @tools.params(*policies)
     def test_gaussian_policies(self, policy_cls):
-        logger.reset()
+        logger.add_output(TensorBoardOutput(config.LOG_DIR))
         env = TfEnv(normalize(CartpoleEnv()))
 
         policy = policy_cls(name="policy", env_spec=env.spec)

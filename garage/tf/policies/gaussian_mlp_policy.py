@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 from garage.core import Serializable
-from garage.misc import logger
+from garage.logger import tabular
 from garage.misc.overrides import overrides
 from garage.tf.core import LayersPowered
 import garage.tf.core.layers as L
@@ -252,8 +252,8 @@ class GaussianMLPPolicy(StochasticPolicy, LayersPowered, Serializable):
     def log_diagnostics(self, paths):
         log_stds = np.vstack(
             [path["agent_infos"]["log_std"] for path in paths])
-        logger.record_tabular("{}/AverageStd".format(self.name),
-                              np.mean(np.exp(log_stds)))
+        tabular.record("{}/AverageStd".format(self.name),
+                       np.mean(np.exp(log_stds)))
 
     @property
     def distribution(self):

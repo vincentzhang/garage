@@ -2,10 +2,11 @@
 This script creates a test that fails when garage.tf.algos.VPG performance is
 too low.
 """
+from garage import config
 from garage.baselines import LinearFeatureBaseline
 from garage.envs import normalize
 from garage.envs.box2d import CartpoleEnv
-import garage.misc.logger as logger
+from garage.logger import logger, TensorBoardOutput
 from garage.tf.algos import VPG
 from garage.tf.envs import TfEnv
 from garage.tf.policies import GaussianMLPPolicy
@@ -15,7 +16,7 @@ from tests.fixtures import TfGraphTestCase
 class TestVPG(TfGraphTestCase):
     def test_vpg_cartpole(self):
         """Test VPG with Cartpole environment."""
-        logger.reset()
+        logger.add_output(TensorBoardOutput(config.LOG_DIR))
         env = TfEnv(normalize(CartpoleEnv()))
 
         policy = GaussianMLPPolicy(

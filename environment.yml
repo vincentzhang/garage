@@ -51,6 +51,7 @@ dependencies:
         - pyzmq
         - scikit-image
         - scipy
+        - tabulate
         - tensorboard
         - tensorflow<1.10,>=1.9.0
         - Theano==1.0.2

@@ -5,16 +5,16 @@ import random
 import unittest
 
 from baselines.bench import benchmarks
-from baselines.her.experiment.config import CACHED_ENVS
-from baselines.her.experiment.config import DEFAULT_PARAMS as BASELINES_PARAMS
+from baselines.her.experiment.config import (CACHED_ENVS, DEFAULT_PARAMS as
+                                             BASELINES_PARAMS)
 from baselines.her.experiment.train import launch
 import gym
 import matplotlib.pyplot as plt
 import pandas as pd
 import tensorflow as tf
 
+from garage.logger import CsvOutput, logger, TensorBoardOutput
 from garage.misc import ext
-from garage.misc import logger as garage_logger
 from garage.replay_buffer import HerReplayBuffer
 from garage.tf.algos import DDPG
 from garage.tf.envs import TfEnv
@@ -162,12 +162,12 @@ def run_garage(env, seed, log_dir):
 
         # Set up logger since we are not using run_experiment
         tabular_log_file = osp.join(log_dir, "progress.csv")
-        garage_logger.add_tabular_output(tabular_log_file)
-        garage_logger.set_tensorboard_dir(log_dir)
+        logger.add_output(CsvOutput(tabular_log_file))
+        logger.add_output(TensorBoardOutput(log_dir))
 
         algo.train()
 
-        garage_logger.remove_tabular_output(tabular_log_file)
+        logger.remove_all()
 
         return tabular_log_file
 
