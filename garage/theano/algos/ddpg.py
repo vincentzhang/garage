@@ -217,7 +217,7 @@ class DDPG(RLAlgorithm):
                 self.evaluate(epoch, self.pool)
                 params = self.get_epoch_snapshot(epoch)
                 snapshotter.save_itr_params(epoch, params)
-            logger.log(tabular, with_prefix=False)
+            logger.log(tabular)
             logger.pop_prefix()
             if self.plot:
                 self.update_plot()
