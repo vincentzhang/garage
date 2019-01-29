@@ -5,11 +5,11 @@ importance sampled iterations.
 from garage.baselines import LinearFeatureBaseline
 from garage.contrib.alexbeloi.is_sampler import ISSampler
 from garage.envs import normalize
-from garage.envs.box2d import CartpoleEnv
-from garage.theano.algos import VPG
-from garage.theano.policies import GaussianMLPPolicy
+from garage.envs import PointEnv
+from garage.tf.algos import VPG
+from garage.tf.policies import GaussianMLPPolicy
 
-env = normalize(CartpoleEnv())
+env = normalize(PointEnv())
 
 policy = GaussianMLPPolicy(env_spec=env.spec, hidden_sizes=(32, 32))
 
